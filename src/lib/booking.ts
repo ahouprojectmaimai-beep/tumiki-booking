@@ -299,7 +299,7 @@ export function publicView(b: Booking, s: Settings) {
     date: tsToDate(b.start_ts, s.timezone), time: tsToHHMM(b.start_ts, s.timezone), endTime: tsToHHMM(b.end_ts, s.timezone),
     startTs: b.start_ts, endTs: b.end_ts, meetUrl: b.meet_url,
     locationName: b.mode === "office" ? s.officeName : b.location_name,
-    locationAddress: b.mode === "office" ? s.officeAddress : b.location_address,
+    locationAddress: b.mode === "office" ? "" : b.location_address, // 事務所の詳しい住所は画面に出さず、メールで案内する
     addressUnconfirmed: !!b.address_unconfirmed && b.mode === "visit",
   };
 }

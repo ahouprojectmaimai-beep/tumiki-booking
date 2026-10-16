@@ -1,4 +1,4 @@
-import { $, api, clear, createPicker, fmtRange, h, MODE_LABEL } from "./common.js";
+import { $, api, clear, createPicker, fmtRange, h, MODE_LABEL, OFFICE_NOTE } from "./common.js";
 
 const app = $("#app"), brand = $("header.brand");
 const q = new URLSearchParams(location.search);
@@ -18,6 +18,7 @@ function view(b, canChange, cfg) {
   const add = (k, v) => { if (v) dl.append(h("dt", { text: k }), h("dd", { text: v })); };
   add("日時", fmtRange(b)); add("開催方法", MODE_LABEL[b.mode]);
   if (b.mode === "online") add("参加URL", b.meetUrl);
+  else if (b.mode === "office") add("開催場所", `${b.locationName}\n${OFFICE_NOTE}`);
   else add("開催場所", [b.locationName, b.addressUnconfirmed || !b.locationAddress ? "※場所の詳細は確認のうえ、改めてご連絡します。" : b.locationAddress].filter(Boolean).join("\n"));
   add("お名前", b.name); add("会社名・店舗名", b.company); add("メールアドレス", b.email);
   const cancelled = b.status !== "confirmed";

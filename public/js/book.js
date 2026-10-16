@@ -1,4 +1,4 @@
-import { $, api, clear, createPicker, fmtRange, h, MODE_LABEL } from "./common.js";
+import { $, api, clear, createPicker, fmtRange, h, MODE_LABEL, OFFICE_NOTE } from "./common.js";
 
 const app = $("#app");
 const brand = $("header.brand");
@@ -20,7 +20,7 @@ function renderForm() {
   const modeBtns = [
     ["online", "オンライン", "Google Meet で参加（URLをお送りします）"],
     ["visit", "対面（店舗・指定場所）", cfg.visitLocationBy === "customer" ? "ご指定の店舗・場所に伺います" : "場所は担当者から改めてご相談します"],
-    ["office", "対面（弊社事務所）", "弊社事務所にお越しください（住所はご予約完了後にご案内します）"],
+    ["office", "対面（弊社事務所）", `弊社事務所にお越しください（${OFFICE_NOTE}）`],
   ].map(([m, t, sub]) => h("button", { type: "button", class: "mode", "aria-pressed": "false", "data-mode": m, onclick: () => pickMode(m) }, h("b", { text: t }), h("small", { text: sub })));
 
   const picker = createPicker({
@@ -74,7 +74,7 @@ function pickMode(m) {
   for (const b of document.querySelectorAll(".mode")) b.setAttribute("aria-pressed", String(b.dataset.mode === m));
   const extra = clear($("#mode-extra")), cfg = state.cfg;
   if (m === "office") {
-    extra.append(h("div", { class: "addr", text: "弊社事務所の住所は、ご予約完了後の画面と、ご登録のメールアドレス宛の確認メールでご案内します。" }));
+    extra.append(h("div", { class: "addr", text: OFFICE_NOTE }));
   } else if (m === "visit" && cfg.visitLocationBy === "customer") {
     extra.append(
       h("label", { class: "f" }, "店舗名・施設名", h("span", { class: "req", text: "必須" }), h("input", { type: "text", id: "locName", maxlength: "100", placeholder: "例：〇〇店" })),
@@ -104,7 +104,7 @@ function payload() {
 
 function placeLines(p) {
   if (p.mode === "online") return "Google Meet（確定後にURLをお送りします）";
-  if (p.mode === "office") return `${state.cfg.office.name}\n（住所はご予約完了後にご案内します）`;
+  if (p.mode === "office") return `${state.cfg.office.name}\n${OFFICE_NOTE}`;
   if (state.cfg.visitLocationBy === "admin") return "担当者から改めてご相談します";
   return [p.locationName, p.locationAddress || "（住所は後ほど確認します）"].join("\n");
 }
@@ -154,7 +154,7 @@ function renderDone({ booking: b, manageUrl }) {
   const add = (t, v) => { if (v) dl.append(h("dt", { text: t }), h("dd", { text: v })); };
   add("日時", fmtRange(b)); add("開催方法", MODE_LABEL[b.mode]);
   if (b.mode === "online") add("参加URL", b.meetUrl);
-  else if (b.mode === "office") add("開催場所", `${b.locationName}\n${b.locationAddress}`.trim());
+  else if (b.mode === "office") add("開催場所", `${b.locationName}\n${OFFICE_NOTE}`);
   else add("開催場所", b.addressUnconfirmed || !b.locationAddress ? `${b.locationName}\n※場所の詳細は確認のうえ、改めてご連絡します。` : `${b.locationName}\n${b.locationAddress}`);
   mount(
     h("div", { class: "center" }, h("div", { class: "done-icon", text: "✓" }), h("h1", { text: "ご予約が確定しました" }),
