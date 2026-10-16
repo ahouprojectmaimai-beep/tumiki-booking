@@ -92,8 +92,8 @@ async function busyIn(d: Deps, s: Settings, range: Interval, excludeEventId?: st
   const others = s.busyCalendarIds.filter((c) => c !== s.targetCalendarId && !(c === "primary" && s.targetCalendarId.includes("@")));
   const scan = [...new Set([s.targetCalendarId, ...s.busyCalendarIds, ...s.closedDayCalendarIds])];
   const [own, extra, closed] = await Promise.all([
-    d.cal.busyFromEvents(s.targetCalendarId, range, s.timezone, excludeEventId, s.ignoreAllDayEvents),
-    s.ignoreAllDayEvents && d.cal.busyFromCalendars ? d.cal.busyFromCalendars(others, range, s.timezone, true) : d.cal.busyFromFreeBusy(others, range),
+    d.cal.busyFromEvents(s.targetCalendarId, range, s.timezone, excludeEventId, s.ignoreAllDayEvents, s.allDayTimeLeadMin),
+    s.ignoreAllDayEvents && d.cal.busyFromCalendars ? d.cal.busyFromCalendars(others, range, s.timezone, true, s.allDayTimeLeadMin) : d.cal.busyFromFreeBusy(others, range),
     s.closedDayKeywords.length && d.cal.closedDayIntervals ? d.cal.closedDayIntervals(scan, range, s.timezone, s.closedDayKeywords) : Promise.resolve([] as Interval[]),
   ]);
   return [...own, ...extra, ...closed];

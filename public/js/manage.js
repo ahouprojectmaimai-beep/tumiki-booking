@@ -43,7 +43,7 @@ function reschedule(b, cfg) {
   const err = h("div");
   const go = h("button", { class: "btn", type: "button", disabled: true, text: "この日時に変更する" });
   const picker = createPicker({
-    firstDate: cfg.firstDate, lastDate: cfg.lastDate, today: cfg.today,
+    firstDate: cfg.firstDate, lastDate: cfg.lastDate, today: cfg.today, durationMin: cfg.durationMin,
     fetchDays: async (from, to) => (await api(`${base}/availability?t=${encodeURIComponent(t)}&from=${from}&to=${to}`)).days,
     onPick: (s) => { slot = s; go.disabled = !s; },
   });

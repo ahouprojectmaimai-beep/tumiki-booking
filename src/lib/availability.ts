@@ -1,4 +1,4 @@
-import type { Settings } from "./settings.ts";
+import { dayEndOf, type Settings } from "./settings.ts";
 import { addDays, hhmmToMin, MIN, overlaps, tsToDate, weekdayOf, zonedToTs, type Interval } from "./time.ts";
 
 /** 予約を受け付ける日付の範囲（現地日付） */
@@ -35,7 +35,7 @@ export function daySlots(s: Settings, date: string, busy: Interval[], holds: Int
   if (!s.weekdays.includes(weekdayOf(date))) return [];
   const out: string[] = [];
   const from = hhmmToMin(s.dayStart);
-  const to = hhmmToMin(s.dayEnd);
+  const to = hhmmToMin(dayEndOf(s, weekdayOf(date))); // 曜日ごとの終了時刻（例: 火曜は15時まで）
   const taken = [...busy, ...holds];
   for (let m = from; m + s.durationMin <= to; m += s.stepMin) {
     const hhmm = `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;

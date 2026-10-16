@@ -96,3 +96,19 @@ describe("daySlots", () => {
     expect(Object.keys(r)).toEqual(["2026-10-21", "2026-10-22", "2026-10-23", "2026-10-26"]);
   });
 });
+
+describe("曜日ごとの受付終了時刻", () => {
+  it("火曜日は15時までに終わる予約だけ（60分枠は14:00開始まで）", () => {
+    const tue = daySlots(s, "2026-10-27", [], [], NOW); // 火曜
+    expect(tue[tue.length - 1]).toBe("14:00");
+    const wed = daySlots(s, "2026-10-28", [], [], NOW); // 水曜は共通の18:00まで（17:00開始）
+    expect(wed[wed.length - 1]).toBe("17:00");
+  });
+  it("設定で曜日ごとの終了時刻を変えられる/枠が取れない値は無視される", () => {
+    const sat = normalizeSettings({ weekdays: [1, 2, 3, 4, 5, 6], dayEndByWeekday: { "6": "12:00" } });
+    const slots = daySlots(sat, "2026-10-31", [], [], NOW); // 土曜
+    expect(slots[slots.length - 1]).toBe("11:00");
+    const bad = normalizeSettings({ dayEndByWeekday: { "2": "10:30" } });
+    expect(bad.dayEndByWeekday).toEqual({});
+  });
+});

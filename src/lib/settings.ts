@@ -12,6 +12,7 @@ export type Settings = {
   weekdays: number[]; // 0=日..6=土
   dayStart: string; // 受付開始時刻（この時刻以降に開始）
   dayEnd: string; // 受付終了時刻（この時刻までに終了）
+  dayEndByWeekday: Record<string, string>; // 曜日ごとの受付終了時刻（0=日..6=土。無い曜日は dayEnd）例: 火曜は15時まで（送り迎え）
   horizonDays: number;
   allowSameDay: boolean;
   cutoffMin: number; // 開始の何分前まで受付
@@ -20,6 +21,7 @@ export type Settings = {
   visitLocationBy: "customer" | "admin";
   busyCalendarIds: string[]; // 空き判定に使う追加カレンダー
   ignoreAllDayEvents: boolean; // 終日の予定は空き判定に使わない（休み・休業日は別途お休みとして扱う）
+  allDayTimeLeadMin: number; // 件名に「16時〜17時30分」のある終日予定は、開始の何分前から埋めるか（送り迎えなど）
   closedDayKeywords: string[]; // 件名にこれを含む予定がある日は終日お休み（休み・休業日など）
   closedDayCalendarIds: string[]; // お休みの予定を探す追加カレンダー（登録先と追加カレンダーに加えて）
   targetCalendarId: string; // 予約の登録先
@@ -42,6 +44,7 @@ export const DEFAULT_SETTINGS: Settings = {
   weekdays: [1, 2, 3, 4, 5],
   dayStart: "10:00",
   dayEnd: "18:00",
+  dayEndByWeekday: { "2": "15:00" },
   horizonDays: 30,
   allowSameDay: true,
   cutoffMin: 120,
@@ -50,6 +53,7 @@ export const DEFAULT_SETTINGS: Settings = {
   visitLocationBy: "customer",
   busyCalendarIds: [],
   ignoreAllDayEvents: true,
+  allDayTimeLeadMin: 60,
   closedDayKeywords: ["休み", "休業"],
   closedDayCalendarIds: [],
   targetCalendarId: "primary",
@@ -67,6 +71,20 @@ const int = (v: unknown, lo: number, hi: number, def: number) =>
 const str = (v: unknown, max: number, def: string) => (typeof v === "string" ? v.trim().slice(0, max) : def);
 const bool = (v: unknown, def: boolean) => (typeof v === "boolean" ? v : def);
 
+function normWeekdayEnds(v: unknown, def: Record<string, string>): Record<string, string> {
+  if (!v || typeof v !== "object" || Array.isArray(v)) return def;
+  const out: Record<string, string> = {};
+  for (const [k, t] of Object.entries(v as Record<string, unknown>)) {
+    if (/^[0-6]$/.test(k) && isHHMM(t)) out[k] = t;
+  }
+  return out;
+}
+
+/** その曜日の受付終了時刻 */
+export function dayEndOf(s: Settings, weekday: number): string {
+  return s.dayEndByWeekday[String(weekday)] ?? s.dayEnd;
+}
+
 /** 任意の入力を検証・補正して Settings にする（管理画面の保存時と読み込み時に使用） */
 export function normalizeSettings(input: unknown, base: Settings = DEFAULT_SETTINGS): Settings {
   const i = (input && typeof input === "object" ? input : {}) as Record<string, unknown>;
@@ -83,6 +101,7 @@ export function normalizeSettings(input: unknown, base: Settings = DEFAULT_SETTI
       : base.weekdays,
     dayStart: isHHMM(i.dayStart) ? i.dayStart : base.dayStart,
     dayEnd: isHHMM(i.dayEnd) ? i.dayEnd : base.dayEnd,
+    dayEndByWeekday: normWeekdayEnds(i.dayEndByWeekday, base.dayEndByWeekday),
     horizonDays: int(i.horizonDays, 1, 90, base.horizonDays),
     allowSameDay: bool(i.allowSameDay, base.allowSameDay),
     cutoffMin: int(i.cutoffMin, 0, 60 * 24 * 14, base.cutoffMin),
@@ -93,6 +112,7 @@ export function normalizeSettings(input: unknown, base: Settings = DEFAULT_SETTI
       ? [...new Set(i.busyCalendarIds.filter((x): x is string => typeof x === "string" && x.length > 0 && x.length < 200))].slice(0, 20)
       : base.busyCalendarIds,
     ignoreAllDayEvents: bool(i.ignoreAllDayEvents, base.ignoreAllDayEvents),
+    allDayTimeLeadMin: int(i.allDayTimeLeadMin, 0, 240, base.allDayTimeLeadMin),
     closedDayKeywords: Array.isArray(i.closedDayKeywords)
       ? [...new Set(i.closedDayKeywords.filter((x): x is string => typeof x === "string").map((x) => x.trim()).filter((x) => x.length > 0 && x.length <= 30))].slice(0, 10)
       : base.closedDayKeywords,
@@ -111,6 +131,9 @@ export function normalizeSettings(input: unknown, base: Settings = DEFAULT_SETTI
     new Intl.DateTimeFormat("en-US", { timeZone: s.timezone });
   } catch {
     s.timezone = base.timezone;
+  }
+  for (const [k, t] of Object.entries(s.dayEndByWeekday)) {
+    if (hhmmToMin(t) - hhmmToMin(s.dayStart) < s.durationMin) delete s.dayEndByWeekday[k]; // 枠が取れない終了時刻は無視
   }
   if (hhmmToMin(s.dayEnd) - hhmmToMin(s.dayStart) < s.durationMin) {
     s.dayStart = base.dayStart;

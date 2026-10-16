@@ -49,3 +49,26 @@ describe("終日予定の扱い", () => {
     expect(normalizeSettings({ ignoreAllDayEvents: false }).ignoreAllDayEvents).toBe(false);
   });
 });
+
+describe("終日予定に時間帯が書いてある場合（送り迎えなど）", () => {
+  it("「【bibu】16時〜17時30分」は 15:00〜17:30 を埋める（開始の60分前から）", async () => {
+    const { allDayTimeRange } = await import("../src/lib/google.ts");
+    const e = { id: "x", summary: "【bibu】16時〜17時30分", start: { date: "2026-10-20" }, end: { date: "2026-10-21" } };
+    expect(allDayTimeRange(e, tz, 60)).toEqual({ start: zonedToTs("2026-10-20", "15:00", tz), end: zonedToTs("2026-10-20", "17:30", tz) });
+  });
+  it("時間帯の終わりがない/時間がない終日予定は対象外", async () => {
+    const { allDayTimeRange } = await import("../src/lib/google.ts");
+    const ev = (summary: string) => ({ id: "y", summary, start: { date: "2026-10-20" }, end: { date: "2026-10-21" } });
+    expect(allDayTimeRange(ev("水泳(16時45分〜)"), tz, 60)).toBeNull();
+    expect(allDayTimeRange(ev("勤怠連絡"), tz, 60)).toBeNull();
+    expect(allDayTimeRange({ id: "z", summary: "16:00-17:00", start: { dateTime: "2026-10-20T16:00:00+09:00" }, end: { dateTime: "2026-10-20T17:00:00+09:00" } }, tz, 60)).toBeNull();
+  });
+  it("その日は15時までに終わる予約だけ可能（60分枠は14:00開始まで）", async () => {
+    const { allDayTimeRange } = await import("../src/lib/google.ts");
+    const t = allDayTimeRange({ id: "x", summary: "【bibu】16時〜17時30分", start: { date: "2026-10-21" }, end: { date: "2026-10-22" } }, tz, 60)!;
+    const slots = daySlots(DEFAULT_SETTINGS, "2026-10-21", [t], [], NOW);
+    expect(slots).toContain("14:00");
+    expect(slots).not.toContain("14:15");
+    expect(slots).not.toContain("17:00");
+  });
+});

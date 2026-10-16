@@ -24,7 +24,7 @@ function renderForm() {
   ].map(([m, t, sub]) => h("button", { type: "button", class: "mode", "aria-pressed": "false", "data-mode": m, onclick: () => pickMode(m) }, h("b", { text: t }), h("small", { text: sub })));
 
   const picker = createPicker({
-    firstDate: cfg.firstDate, lastDate: cfg.lastDate, today: cfg.today,
+    firstDate: cfg.firstDate, lastDate: cfg.lastDate, today: cfg.today, durationMin: cfg.durationMin,
     fetchDays: async (from, to) => (await api(`/api/public/availability?from=${from}&to=${to}&mode=${state.mode || "online"}`)).days,
     onPick: (s) => { state.slot = s; unlock("s-info", !!s); updateSubmit(); },
   });

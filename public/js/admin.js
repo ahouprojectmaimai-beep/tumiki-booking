@@ -90,7 +90,7 @@ async function rescheduleModal(b, done) {
   let slot = null;
   const err = h("div");
   const go = h("button", { class: "btn", type: "button", disabled: true, text: "この日時に変更（お客様に通知）" });
-  const picker = createPicker({ firstDate: cfg.firstDate, lastDate: cfg.lastDate, today: cfg.today,
+  const picker = createPicker({ firstDate: cfg.firstDate, lastDate: cfg.lastDate, today: cfg.today, durationMin: cfg.durationMin,
     fetchDays: async (from, to) => (await api(`/api/admin/availability?from=${from}&to=${to}&exclude=${b.id}&mode=${b.mode || "online"}`)).days,
     onPick: (s) => { slot = s; go.disabled = !s; } });
   const m = modal("日時変更", h("p", { class: "hint", text: `現在：${fmtRange(b)}` }), picker.el, err, go,
@@ -142,9 +142,9 @@ async function viewSettings(pane) {
     const body = {
       durationMin: n("durationMin"), stepMin: n("stepMin"), bufferBeforeMin: n("bufferBeforeMin"), bufferAfterMin: n("bufferAfterMin"), inPersonBufferMin: n("inPersonBufferMin"),
       weekdays: [...document.querySelectorAll("#s-weekdays input:checked")].map((i) => Number(i.value)),
-      dayStart: v("dayStart"), dayEnd: v("dayEnd"), horizonDays: n("horizonDays"), allowSameDay: c("allowSameDay"), cutoffMin: Math.round(n("cutoffHours") * 60),
+      dayStart: v("dayStart"), dayEnd: v("dayEnd"), dayEndByWeekday: Object.fromEntries([0, 1, 2, 3, 4, 5, 6].map((i) => [String(i), $(`#s-dayEnd-${i}`).value]).filter(([, t]) => t)), horizonDays: n("horizonDays"), allowSameDay: c("allowSameDay"), cutoffMin: Math.round(n("cutoffHours") * 60),
       officeName: v("officeName"), officeAddress: v("officeAddress"), visitLocationBy: v("visitLocationBy"),
-      ignoreAllDayEvents: c("ignoreAllDayEvents"), closedDayKeywords: v("closedDayKeywords").split(/[,、，\s]+/).filter(Boolean), closedDayCalendarIds: [...document.querySelectorAll("#s-closedCals input:checked")].map((i) => i.value),
+      ignoreAllDayEvents: c("ignoreAllDayEvents"), allDayTimeLeadMin: n("allDayTimeLeadMin"), closedDayKeywords: v("closedDayKeywords").split(/[,、，\s]+/).filter(Boolean), closedDayCalendarIds: [...document.querySelectorAll("#s-closedCals input:checked")].map((i) => i.value),
       busyCalendarIds: [...document.querySelectorAll("#s-busy input:checked")].map((i) => i.value).filter((id) => id !== (v("targetCalendarId") === "primary" ? g.calendars.find((c) => c.primary)?.id : v("targetCalendarId"))), targetCalendarId: v("targetCalendarId"),
       googleInvite: c("googleInvite"), sendOwnMail: c("sendOwnMail"), adminNotifyEmail: v("adminNotifyEmail"), replyTo: v("replyTo"), privacyText: v("privacyText"),
     };
@@ -153,6 +153,8 @@ async function viewSettings(pane) {
     h("section", { class: "card" }, h("h2", { text: "受付できる日時" }),
       h("div", { class: "f" }, "予約を受け付ける曜日", h("div", { class: "checks", id: "s-weekdays" }, wd.map((w, i) => h("label", {}, h("input", { type: "checkbox", value: i, checked: s.weekdays.includes(i) }), w)))),
       h("div", { class: "grid2" }, h("label", { class: "f" }, "受付開始時刻", h("input", { type: "time", id: "s-dayStart", value: s.dayStart })), h("label", { class: "f" }, "受付終了時刻（この時刻までに終了）", h("input", { type: "time", id: "s-dayEnd", value: s.dayEnd }))),
+      h("div", { class: "f" }, "曜日ごとの受付終了時刻（空欄は上の共通の時刻）", h("p", { class: "hint", text: "例：火曜日は送り迎えのため15:00までに終わる予約だけ受け付けます。" }),
+        h("div", { class: "grid2" }, [1, 2, 3, 4, 5, 6, 0].map((i) => h("label", { class: "f" }, `${wd[i]}曜日`, h("input", { type: "time", id: `s-dayEnd-${i}`, value: (s.dayEndByWeekday || {})[String(i)] || "" }))))),
       h("div", { class: "grid2" }, num("durationMin", "予約枠の長さ（分）", { min: 15, max: 480 }), h("label", { class: "f" }, "開始時刻の刻み幅", step)),
       h("div", { class: "grid2" }, num("bufferBeforeMin", "予約の前の余裕（分）"), num("bufferAfterMin", "予約の後の余裕（分）")),
       h("div", { class: "grid2" }, num("inPersonBufferMin", "対面（事務所・訪問）の移動時間：前後に確保（分）")),
@@ -167,6 +169,7 @@ async function viewSettings(pane) {
       chk("googleInvite", "Googleカレンダーの招待通知をお客様に送る")),
     h("section", { class: "card" }, h("h2", { text: "お休み日（休み・休業日）" }),
       h("p", { class: "hint", text: "カレンダーの予定の件名に下のキーワードを含む日は、終日お休みとして予約を受け付けません（「予定なし」の終日予定も対象）。" }),
+      h("div", { class: "grid2" }, num("allDayTimeLeadMin", "終日予定に「16時〜17時30分」と書いてある場合、開始の何分前から埋めるか（送り迎えなど）")),
       chk("ignoreAllDayEvents", "終日の予定は空き判定に使わない（メモ・目印用の終日予定で、その日が埋まらないように。休み・休業日は下の設定でお休みにします）"),
       h("label", { class: "f" }, "キーワード（カンマ区切り）", h("input", { type: "text", id: "s-closedDayKeywords", value: (s.closedDayKeywords || []).join("、") })),
       h("div", { class: "f" }, "お休みの予定を読み取るカレンダー", h("p", { class: "hint", text: "登録先・空き判定に加えるカレンダーに加えて、ここで選んだカレンダーも読み取ります（予定の内容は避けず、お休みの日だけ反映します）。" }), closedCals),
