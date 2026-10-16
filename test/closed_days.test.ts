@@ -37,3 +37,15 @@ describe("お休み日（休み・休業日）", () => {
     expect(s.closedDayCalendarIds).toEqual(["a@group.calendar.google.com"]);
   });
 });
+
+describe("終日予定の扱い", () => {
+  it("終日予定かどうかを判定する", async () => {
+    const { isAllDay } = await import("../src/lib/google.ts");
+    expect(isAllDay({ id: "a", start: { date: "2026-10-21" }, end: { date: "2026-10-22" } })).toBe(true);
+    expect(isAllDay({ id: "b", start: { dateTime: "2026-10-21T10:00:00+09:00" }, end: { dateTime: "2026-10-21T11:00:00+09:00" } })).toBe(false);
+  });
+  it("既定では終日予定を空き判定に使わない", () => {
+    expect(DEFAULT_SETTINGS.ignoreAllDayEvents).toBe(true);
+    expect(normalizeSettings({ ignoreAllDayEvents: false }).ignoreAllDayEvents).toBe(false);
+  });
+});

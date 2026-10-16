@@ -119,7 +119,9 @@ export type GEvent = {
 
 export interface CalendarApi {
   /** 登録先カレンダーの埋まり時間（excludeEventId を除く）。詳細が見られる自分のカレンダー用 */
-  busyFromEvents(calendarId: string, range: Interval, tz: string, excludeEventId?: string): Promise<Interval[]>;
+  busyFromEvents(calendarId: string, range: Interval, tz: string, excludeEventId?: string, skipAllDay?: boolean): Promise<Interval[]>;
+  /** 複数カレンダーの埋まり時間を予定の一覧から求める（終日予定を除外できる）。詳細を読めないカレンダーは freeBusy にする */
+  busyFromCalendars?(calendarIds: string[], range: Interval, tz: string, skipAllDay: boolean): Promise<Interval[]>;
   /** 追加カレンダーの埋まり時間（freeBusy API） */
   busyFromFreeBusy(calendarIds: string[], range: Interval): Promise<Interval[]>;
   /** 件名にキーワード（休み・休業など）を含む予定がある日を、丸一日の「お休み」として返す（予定なし扱いの終日予定も対象） */
@@ -141,6 +143,11 @@ export function eventBlocks(e: GEvent): boolean {
   const self = e.attendees?.find((a) => a.self);
   if (self?.responseStatus === "declined") return false;
   return true;
+}
+
+/** 終日の予定か（日付だけで時刻を持たない予定。メモ・目印として入れられることが多い） */
+export function isAllDay(e: GEvent): boolean {
+  return !!e.start?.date && !e.start?.dateTime;
 }
 
 /** 件名にキーワードを含む予定か（取り消し済みは除く。予定あり/なしの設定には関係なく休業日として扱う） */
@@ -194,7 +201,7 @@ export class GoogleCalendar implements CalendarApi {
     throw new GoogleError(500, "unreachable");
   }
 
-  async busyFromEvents(calendarId: string, range: Interval, tz: string, excludeEventId?: string): Promise<Interval[]> {
+  async busyFromEvents(calendarId: string, range: Interval, tz: string, excludeEventId?: string, skipAllDay = false): Promise<Interval[]> {
     const out: Interval[] = [];
     let pageToken: string | undefined;
     do {
@@ -206,7 +213,7 @@ export class GoogleCalendar implements CalendarApi {
       if (pageToken) q.set("pageToken", pageToken);
       const j = await this.call<{ items?: GEvent[]; nextPageToken?: string }>("GET", `${CAL_API}/calendars/${encodeURIComponent(calendarId)}/events?${q}`);
       for (const e of j?.items ?? []) {
-        if (e.id === excludeEventId || !eventBlocks(e)) continue;
+        if (e.id === excludeEventId || !eventBlocks(e) || (skipAllDay && isAllDay(e))) continue;
         const iv = eventInterval(e, tz);
         if (iv) out.push(iv);
       }
@@ -240,8 +247,42 @@ export class GoogleCalendar implements CalendarApi {
     return out;
   }
 
+  /** 管理者の確認用: 指定カレンダーの予定（件名・時間・予定あり/なし）を一覧で返す */
+  async listEventsBrief(calendarId: string, range: Interval) {
+    const out: { summary: string; start: string; end: string; allDay: boolean; transparency: string; status: string }[] = [];
+    let pageToken: string | undefined;
+    let pages = 0;
+    do {
+      const q = new URLSearchParams({
+        timeMin: new Date(range.start * 1000).toISOString(), timeMax: new Date(range.end * 1000).toISOString(),
+        singleEvents: "true", maxResults: "250", showDeleted: "false", orderBy: "startTime",
+        fields: "nextPageToken,items(status,summary,transparency,start,end)",
+      });
+      if (pageToken) q.set("pageToken", pageToken);
+      const j = await this.call<{ items?: GEvent[]; nextPageToken?: string }>("GET", `${CAL_API}/calendars/${encodeURIComponent(calendarId)}/events?${q}`);
+      for (const e of j?.items ?? []) {
+        out.push({ summary: e.summary ?? "", start: e.start?.dateTime ?? e.start?.date ?? "", end: e.end?.dateTime ?? e.end?.date ?? "", allDay: !!e.start?.date, transparency: e.transparency ?? "opaque", status: e.status ?? "" });
+      }
+      pageToken = j?.nextPageToken;
+    } while (pageToken && ++pages < 4);
+    return out;
+  }
+
   async closedDayIntervals(calendarIds: string[], range: Interval, tz: string, keywords: string[]): Promise<Interval[]> {
     return (await this.findClosedDayEvents(calendarIds, range, tz, keywords)).map((x) => x.interval);
+  }
+
+  async busyFromCalendars(calendarIds: string[], range: Interval, tz: string, skipAllDay: boolean): Promise<Interval[]> {
+    const lists = await Promise.all([...new Set(calendarIds)].map(async (id) => {
+      try {
+        return await this.busyFromEvents(id, range, tz, undefined, skipAllDay);
+      } catch (e) {
+        // 予定の詳細を読めない共有カレンダー（空き時間のみ共有）は freeBusy で代用
+        if (e instanceof GoogleError && (e.status === 403 || e.status === 404)) return this.busyFromFreeBusy([id], range);
+        throw e;
+      }
+    }));
+    return lists.flat();
   }
 
   async busyFromFreeBusy(calendarIds: string[], range: Interval): Promise<Interval[]> {

@@ -19,6 +19,7 @@ export type Settings = {
   officeAddress: string;
   visitLocationBy: "customer" | "admin";
   busyCalendarIds: string[]; // 空き判定に使う追加カレンダー
+  ignoreAllDayEvents: boolean; // 終日の予定は空き判定に使わない（休み・休業日は別途お休みとして扱う）
   closedDayKeywords: string[]; // 件名にこれを含む予定がある日は終日お休み（休み・休業日など）
   closedDayCalendarIds: string[]; // お休みの予定を探す追加カレンダー（登録先と追加カレンダーに加えて）
   targetCalendarId: string; // 予約の登録先
@@ -48,6 +49,7 @@ export const DEFAULT_SETTINGS: Settings = {
   officeAddress: "",
   visitLocationBy: "customer",
   busyCalendarIds: [],
+  ignoreAllDayEvents: true,
   closedDayKeywords: ["休み", "休業"],
   closedDayCalendarIds: [],
   targetCalendarId: "primary",
@@ -90,6 +92,7 @@ export function normalizeSettings(input: unknown, base: Settings = DEFAULT_SETTI
     busyCalendarIds: Array.isArray(i.busyCalendarIds)
       ? [...new Set(i.busyCalendarIds.filter((x): x is string => typeof x === "string" && x.length > 0 && x.length < 200))].slice(0, 20)
       : base.busyCalendarIds,
+    ignoreAllDayEvents: bool(i.ignoreAllDayEvents, base.ignoreAllDayEvents),
     closedDayKeywords: Array.isArray(i.closedDayKeywords)
       ? [...new Set(i.closedDayKeywords.filter((x): x is string => typeof x === "string").map((x) => x.trim()).filter((x) => x.length > 0 && x.length <= 30))].slice(0, 10)
       : base.closedDayKeywords,

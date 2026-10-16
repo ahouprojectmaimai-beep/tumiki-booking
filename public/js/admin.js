@@ -144,7 +144,7 @@ async function viewSettings(pane) {
       weekdays: [...document.querySelectorAll("#s-weekdays input:checked")].map((i) => Number(i.value)),
       dayStart: v("dayStart"), dayEnd: v("dayEnd"), horizonDays: n("horizonDays"), allowSameDay: c("allowSameDay"), cutoffMin: Math.round(n("cutoffHours") * 60),
       officeName: v("officeName"), officeAddress: v("officeAddress"), visitLocationBy: v("visitLocationBy"),
-      closedDayKeywords: v("closedDayKeywords").split(/[,、，\s]+/).filter(Boolean), closedDayCalendarIds: [...document.querySelectorAll("#s-closedCals input:checked")].map((i) => i.value),
+      ignoreAllDayEvents: c("ignoreAllDayEvents"), closedDayKeywords: v("closedDayKeywords").split(/[,、，\s]+/).filter(Boolean), closedDayCalendarIds: [...document.querySelectorAll("#s-closedCals input:checked")].map((i) => i.value),
       busyCalendarIds: [...document.querySelectorAll("#s-busy input:checked")].map((i) => i.value).filter((id) => id !== (v("targetCalendarId") === "primary" ? g.calendars.find((c) => c.primary)?.id : v("targetCalendarId"))), targetCalendarId: v("targetCalendarId"),
       googleInvite: c("googleInvite"), sendOwnMail: c("sendOwnMail"), adminNotifyEmail: v("adminNotifyEmail"), replyTo: v("replyTo"), privacyText: v("privacyText"),
     };
@@ -167,6 +167,7 @@ async function viewSettings(pane) {
       chk("googleInvite", "Googleカレンダーの招待通知をお客様に送る")),
     h("section", { class: "card" }, h("h2", { text: "お休み日（休み・休業日）" }),
       h("p", { class: "hint", text: "カレンダーの予定の件名に下のキーワードを含む日は、終日お休みとして予約を受け付けません（「予定なし」の終日予定も対象）。" }),
+      chk("ignoreAllDayEvents", "終日の予定は空き判定に使わない（メモ・目印用の終日予定で、その日が埋まらないように。休み・休業日は下の設定でお休みにします）"),
       h("label", { class: "f" }, "キーワード（カンマ区切り）", h("input", { type: "text", id: "s-closedDayKeywords", value: (s.closedDayKeywords || []).join("、") })),
       h("div", { class: "f" }, "お休みの予定を読み取るカレンダー", h("p", { class: "hint", text: "登録先・空き判定に加えるカレンダーに加えて、ここで選んだカレンダーも読み取ります（予定の内容は避けず、お休みの日だけ反映します）。" }), closedCals),
       h("div", { class: "f" }, "現在検出されているお休み日", closedList)),

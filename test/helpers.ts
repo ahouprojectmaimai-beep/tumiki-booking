@@ -40,10 +40,10 @@ export class FakeCalendar implements CalendarApi {
     this.events.set(id, ev);
     this.changeLog.push(ev);
   }
-  async busyFromEvents(_c: string, range: Interval, tz: string, exclude?: string) {
+  async busyFromEvents(_c: string, range: Interval, tz: string, exclude?: string, skipAllDay = false) {
     const out: Interval[] = [];
     for (const e of this.events.values()) {
-      if (e.id === exclude || !eventBlocks(e)) continue;
+      if (e.id === exclude || !eventBlocks(e) || (skipAllDay && !!e.start?.date)) continue;
       const iv = eventInterval(e, tz);
       if (iv && iv.start < range.end && iv.end > range.start) out.push(iv);
     }

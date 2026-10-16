@@ -295,6 +295,19 @@ app.get("/api/admin/closed-days", async (c) => {
   return c.json({ keywords: s.closedDayKeywords, items });
 });
 
+/** どの予定が空きを埋めているかの確認用（管理者のみ） */
+app.get("/api/admin/calendar-events", async (c) => {
+  const s = await loadSettings(dbOf(c.env));
+  const d = depsOf(c.env);
+  const id = c.req.query("calendar") ?? "";
+  const cals = await d.cal.listCalendars();
+  const cal = cals.find((x) => x.id === id || (id === "primary" && x.primary));
+  if (!cal) return c.json({ error: "not_found", message: "カレンダーが見つかりません" }, 404);
+  const r = bookableRange(s, nowSec());
+  const events = await (d.cal as GoogleCalendar).listEventsBrief(cal.id, dateRangeToTs(s, r.first, c.req.query("to") ?? r.last));
+  return c.json({ calendar: (cal.summary || cal.id).trim(), events });
+});
+
 app.get("/api/admin/google/status", async (c) => {
   const db = dbOf(c.env);
   const acct = await db.prepare("SELECT email, scopes, connected_at FROM google_account WHERE id = 1").first<{ email: string; scopes: string; connected_at: number }>();
