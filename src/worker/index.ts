@@ -61,7 +61,7 @@ app.get("/api/public/config", async (c) => {
   const r = bookableRange(s, nowSec());
   return c.json({
     ready: connected, timezone: s.timezone, durationMin: s.durationMin, firstDate: r.first, lastDate: r.last, today: tsToDate(nowSec(), s.timezone),
-    office: { name: s.officeName, address: s.officeAddress }, visitLocationBy: s.visitLocationBy, privacyText: s.privacyText,
+    office: { name: s.officeName }, visitLocationBy: s.visitLocationBy, privacyText: s.privacyText,
   });
 });
 

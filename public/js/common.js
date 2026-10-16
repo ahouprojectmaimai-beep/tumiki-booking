@@ -27,7 +27,7 @@ export async function api(path, { method = "GET", body } = {}) {
 }
 
 const WD = ["日", "月", "火", "水", "木", "金", "土"];
-export const MODE_LABEL = { online: "オンライン（Google Meet）", office: "対面（事務所）", visit: "対面（店舗・指定場所）" };
+export const MODE_LABEL = { online: "オンライン（Google Meet）", office: "対面（弊社事務所）", visit: "対面（店舗・指定場所）" };
 export const fmtDate = (d) => { const [y, m, dd] = d.split("-").map(Number); return `${m}月${dd}日（${WD[new Date(Date.UTC(y, m - 1, dd)).getUTCDay()]}）`; };
 export const fmtRange = (b) => `${fmtDate(b.date)} ${b.time}〜${b.endTime}`;
 export const ymd = (y, m, d) => `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;

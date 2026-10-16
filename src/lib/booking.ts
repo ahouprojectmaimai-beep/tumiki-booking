@@ -161,7 +161,7 @@ function eventBody(b: MailBooking, s: Settings, baseUrl: string, token: string |
   const desc = [
     `お客様: ${b.name}${b.company ? `（${b.company}）` : ""}`,
     `メール: ${b.email}`,
-    `開催方法: ${{ online: "オンライン（Google Meet）", office: "対面（事務所）", visit: "対面（店舗・指定場所）" }[b.mode]}`,
+    `開催方法: ${{ online: "オンライン（Google Meet）", office: "対面（弊社事務所）", visit: "対面（店舗・指定場所）" }[b.mode]}`,
     b.mode === "visit" && (b.address_unconfirmed || !b.location_address) ? "※訪問先の住所は未確認です" : "",
     b.note ? `ご相談内容: ${b.note}` : "",
     token ? `予約の確認・変更・キャンセル: ${manageUrl(baseUrl, b.id, token)}` : "",

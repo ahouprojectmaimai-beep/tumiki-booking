@@ -77,7 +77,7 @@ export type MailKind = "confirmed" | "changed" | "cancelled" | "admin_new" | "ad
 
 export const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 
-export const MODE_LABEL = { online: "オンライン（Google Meet）", office: "対面（事務所）", visit: "対面（店舗・指定場所）" } as const;
+export const MODE_LABEL = { online: "オンライン（Google Meet）", office: "対面（弊社事務所）", visit: "対面（店舗・指定場所）" } as const;
 
 /** 開催場所の表示行。対面で住所未確認なら確認する旨を案内 */
 export function locationLines(b: MailBooking, s: Settings): { label: string; value: string }[] {

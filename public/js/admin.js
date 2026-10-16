@@ -151,7 +151,7 @@ async function viewSettings(pane) {
       h("div", { class: "grid2" }, num("horizonDays", "何日先まで予約可能", { min: 1, max: 90 }),
         h("label", { class: "f" }, "締切（開始の何時間前まで）", h("input", { type: "number", id: "s-cutoffHours", value: s.cutoffMin / 60, min: 0, step: "0.5" }))),
       chk("allowSameDay", "当日の予約を受け付ける")),
-    h("section", { class: "card" }, h("h2", { text: "開催場所" }), txt("officeName", "事務所名"), txt("officeAddress", "事務所住所", { hint: "「対面（事務所）」の予約画面・メール・Googleカレンダーの場所欄に表示されます。" }),
+    h("section", { class: "card" }, h("h2", { text: "開催場所" }), txt("officeName", "事務所名"), txt("officeAddress", "事務所住所", { hint: "「対面（弊社事務所）」の予約完了画面・確認メール・Googleカレンダーの場所欄に表示されます（予約前の画面には出ません）。" }),
       h("label", { class: "f" }, "「店舗・指定場所」の場所の決め方", loc)),
     h("section", { class: "card" }, h("h2", { text: "Googleカレンダー" }),
       h("label", { class: "f" }, "予約の登録先カレンダー", target),

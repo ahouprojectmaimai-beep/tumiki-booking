@@ -19,8 +19,8 @@ function renderForm() {
   const cfg = state.cfg;
   const modeBtns = [
     ["online", "オンライン", "Google Meet で参加（URLをお送りします）"],
-    ["office", "対面（事務所）", "TUMIKI事務所にお越しください"],
     ["visit", "対面（店舗・指定場所）", cfg.visitLocationBy === "customer" ? "ご指定の店舗・場所に伺います" : "場所は担当者から改めてご相談します"],
+    ["office", "対面（弊社事務所）", "弊社事務所にお越しください（住所はご予約完了後にご案内します）"],
   ].map(([m, t, sub]) => h("button", { type: "button", class: "mode", "aria-pressed": "false", "data-mode": m, onclick: () => pickMode(m) }, h("b", { text: t }), h("small", { text: sub })));
 
   const picker = createPicker({
@@ -74,7 +74,7 @@ function pickMode(m) {
   for (const b of document.querySelectorAll(".mode")) b.setAttribute("aria-pressed", String(b.dataset.mode === m));
   const extra = clear($("#mode-extra")), cfg = state.cfg;
   if (m === "office") {
-    extra.append(h("div", { class: "addr" }, `${cfg.office.name}\n${cfg.office.address || "（住所は確定後にご案内します）"}`));
+    extra.append(h("div", { class: "addr", text: "弊社事務所の住所は、ご予約完了後の画面と、ご登録のメールアドレス宛の確認メールでご案内します。" }));
   } else if (m === "visit" && cfg.visitLocationBy === "customer") {
     extra.append(
       h("label", { class: "f" }, "店舗名・施設名", h("span", { class: "req", text: "必須" }), h("input", { type: "text", id: "locName", maxlength: "100", placeholder: "例：〇〇店" })),
@@ -104,7 +104,7 @@ function payload() {
 
 function placeLines(p) {
   if (p.mode === "online") return "Google Meet（確定後にURLをお送りします）";
-  if (p.mode === "office") return `${state.cfg.office.name}\n${state.cfg.office.address}`.trim();
+  if (p.mode === "office") return `${state.cfg.office.name}\n（住所はご予約完了後にご案内します）`;
   if (state.cfg.visitLocationBy === "admin") return "担当者から改めてご相談します";
   return [p.locationName, p.locationAddress || "（住所は後ほど確認します）"].join("\n");
 }
