@@ -15,7 +15,7 @@ import { allow, purgeRateLimits } from "../lib/ratelimit.ts";
 import { loadSettings, normalizeSettings, saveSettings, type Settings } from "../lib/settings.ts";
 import { ensureWatch, stopWatch, syncCalendar, verifyWebhook, watchStatus } from "../lib/sync.ts";
 import { addDays, tsToDate } from "../lib/time.ts";
-import { bookableRange } from "../lib/availability.ts";
+import { bookableRange, dateRangeToTs } from "../lib/availability.ts";
 import type { Env } from "./env.ts";
 
 type C = Context<{ Bindings: Env }>;
@@ -277,6 +277,22 @@ app.put("/api/admin/settings", async (c) => {
     c.executionCtx.waitUntil((async () => { const d = depsOf(c.env); try { await stopWatch(d.cal, db); await ensureWatch(d.cal, db, next, d.baseUrl); } catch { /* cronで再試行 */ } })());
   }
   return c.json({ ok: true, settings: next });
+});
+
+/** お休み日（件名に「休み」「休業」などを含む予定）の検出結果。全カレンダーを調べるので、どこに休みの予定があるか確認できる */
+app.get("/api/admin/closed-days", async (c) => {
+  const s = await loadSettings(dbOf(c.env));
+  const d = depsOf(c.env);
+  const cals = (await d.cal.listCalendars()).filter((x) => !x.id.includes("#holiday@"));
+  const r = bookableRange(s, nowSec());
+  const range = dateRangeToTs(s, r.first, r.last);
+  const found = await (d.cal as GoogleCalendar).findClosedDayEvents(cals.map((x) => x.id), range, s.timezone, s.closedDayKeywords);
+  const name = new Map(cals.map((x) => [x.id, (x.summary || x.id).trim()]));
+  const used = new Set([s.targetCalendarId, ...s.busyCalendarIds, ...s.closedDayCalendarIds]);
+  const items = found
+    .map((f) => ({ date: f.date, summary: f.summary, calendar: name.get(f.calendarId) ?? f.calendarId, calendarId: f.calendarId, applied: used.has(f.calendarId) || (f.calendarId.includes("@") && used.has("primary") && cals.find((x) => x.primary)?.id === f.calendarId) }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+  return c.json({ keywords: s.closedDayKeywords, items });
 });
 
 app.get("/api/admin/google/status", async (c) => {

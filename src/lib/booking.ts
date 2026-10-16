@@ -90,11 +90,13 @@ async function holdsIn(db: DB, range: Interval, now: number, excludeId = ""): Pr
 
 async function busyIn(d: Deps, s: Settings, range: Interval, excludeEventId?: string): Promise<Interval[]> {
   const others = s.busyCalendarIds.filter((c) => c !== s.targetCalendarId && !(c === "primary" && s.targetCalendarId.includes("@")));
-  const [own, extra] = await Promise.all([
+  const scan = [...new Set([s.targetCalendarId, ...s.busyCalendarIds, ...s.closedDayCalendarIds])];
+  const [own, extra, closed] = await Promise.all([
     d.cal.busyFromEvents(s.targetCalendarId, range, s.timezone, excludeEventId),
     d.cal.busyFromFreeBusy(others, range),
+    s.closedDayKeywords.length && d.cal.closedDayIntervals ? d.cal.closedDayIntervals(scan, range, s.timezone, s.closedDayKeywords) : Promise.resolve([] as Interval[]),
   ]);
-  return [...own, ...extra];
+  return [...own, ...extra, ...closed];
 }
 
 /** 期間内の予約可能な日時（お客様には既存予定の内容を一切返さない） */

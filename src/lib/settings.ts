@@ -19,6 +19,8 @@ export type Settings = {
   officeAddress: string;
   visitLocationBy: "customer" | "admin";
   busyCalendarIds: string[]; // 空き判定に使う追加カレンダー
+  closedDayKeywords: string[]; // 件名にこれを含む予定がある日は終日お休み（休み・休業日など）
+  closedDayCalendarIds: string[]; // お休みの予定を探す追加カレンダー（登録先と追加カレンダーに加えて）
   targetCalendarId: string; // 予約の登録先
   googleInvite: boolean; // Googleカレンダーの招待通知を送る
   sendOwnMail: boolean; // 独自の確認メールを送る
@@ -46,6 +48,8 @@ export const DEFAULT_SETTINGS: Settings = {
   officeAddress: "",
   visitLocationBy: "customer",
   busyCalendarIds: [],
+  closedDayKeywords: ["休み", "休業"],
+  closedDayCalendarIds: [],
   targetCalendarId: "primary",
   googleInvite: true,
   sendOwnMail: true,
@@ -86,6 +90,12 @@ export function normalizeSettings(input: unknown, base: Settings = DEFAULT_SETTI
     busyCalendarIds: Array.isArray(i.busyCalendarIds)
       ? [...new Set(i.busyCalendarIds.filter((x): x is string => typeof x === "string" && x.length > 0 && x.length < 200))].slice(0, 20)
       : base.busyCalendarIds,
+    closedDayKeywords: Array.isArray(i.closedDayKeywords)
+      ? [...new Set(i.closedDayKeywords.filter((x): x is string => typeof x === "string").map((x) => x.trim()).filter((x) => x.length > 0 && x.length <= 30))].slice(0, 10)
+      : base.closedDayKeywords,
+    closedDayCalendarIds: Array.isArray(i.closedDayCalendarIds)
+      ? [...new Set(i.closedDayCalendarIds.filter((x): x is string => typeof x === "string" && x.length > 0 && x.length < 200))].slice(0, 20)
+      : base.closedDayCalendarIds,
     targetCalendarId: str(i.targetCalendarId, 200, base.targetCalendarId) || "primary",
     googleInvite: bool(i.googleInvite, base.googleInvite),
     sendOwnMail: bool(i.sendOwnMail, base.sendOwnMail),

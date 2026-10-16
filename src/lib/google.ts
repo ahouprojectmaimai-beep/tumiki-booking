@@ -1,7 +1,7 @@
 // Google OAuth 2.0 / Calendar API（REST直接呼び出し）
 import { decryptSecret } from "./crypto.ts";
 import type { DB } from "./db.ts";
-import { zonedToTs, type Interval } from "./time.ts";
+import { addDays, tsToDate, zonedToTs, type Interval } from "./time.ts";
 
 export type GoogleEnv = {
   GOOGLE_CLIENT_ID: string;
@@ -122,6 +122,8 @@ export interface CalendarApi {
   busyFromEvents(calendarId: string, range: Interval, tz: string, excludeEventId?: string): Promise<Interval[]>;
   /** 追加カレンダーの埋まり時間（freeBusy API） */
   busyFromFreeBusy(calendarIds: string[], range: Interval): Promise<Interval[]>;
+  /** 件名にキーワード（休み・休業など）を含む予定がある日を、丸一日の「お休み」として返す（予定なし扱いの終日予定も対象） */
+  closedDayIntervals?(calendarIds: string[], range: Interval, tz: string, keywords: string[]): Promise<Interval[]>;
   insertEvent(calendarId: string, event: object, opts: { meet: boolean; sendUpdates: "all" | "none" }): Promise<GEvent>;
   patchEvent(calendarId: string, eventId: string, patch: object, opts: { sendUpdates: "all" | "none" }): Promise<GEvent>;
   getEvent(calendarId: string, eventId: string): Promise<GEvent | null>;
@@ -139,6 +141,20 @@ export function eventBlocks(e: GEvent): boolean {
   const self = e.attendees?.find((a) => a.self);
   if (self?.responseStatus === "declined") return false;
   return true;
+}
+
+/** 件名にキーワードを含む予定か（取り消し済みは除く。予定あり/なしの設定には関係なく休業日として扱う） */
+export function isClosedDayEvent(e: GEvent, keywords: string[]): boolean {
+  if (e.status === "cancelled" || !e.summary) return false;
+  const t = e.summary.toLowerCase();
+  return keywords.some((k) => k && t.includes(k.toLowerCase()));
+}
+
+/** イベントが重なる日（現地日付）を丸一日の範囲にする */
+export function wholeDays(iv: Interval, tz: string): Interval {
+  const first = tsToDate(iv.start, tz);
+  const last = tsToDate(Math.max(iv.start, iv.end - 1), tz);
+  return { start: zonedToTs(first, "00:00", tz), end: zonedToTs(addDays(last, 1), "00:00", tz) };
 }
 
 /** イベントの時間帯。終日予定はタイムゾーンの0:00〜（終日はendが翌日0:00で排他的） */
@@ -197,6 +213,35 @@ export class GoogleCalendar implements CalendarApi {
       pageToken = j?.nextPageToken;
     } while (pageToken);
     return out;
+  }
+
+  /** 休業日キーワードに一致する予定を検索（確認画面用に件名・日付も返す） */
+  async findClosedDayEvents(calendarIds: string[], range: Interval, tz: string, keywords: string[]) {
+    const out: { calendarId: string; summary: string; date: string; interval: Interval }[] = [];
+    await Promise.all([...new Set(calendarIds)].map(async (calendarId) => {
+      let pageToken: string | undefined;
+      let pages = 0;
+      do {
+        const q = new URLSearchParams({
+          timeMin: new Date(range.start * 1000).toISOString(), timeMax: new Date(range.end * 1000).toISOString(),
+          singleEvents: "true", maxResults: "250", showDeleted: "false",
+          fields: "nextPageToken,items(id,status,summary,start,end)",
+        });
+        if (pageToken) q.set("pageToken", pageToken);
+        const j = await this.call<{ items?: GEvent[]; nextPageToken?: string }>("GET", `${CAL_API}/calendars/${encodeURIComponent(calendarId)}/events?${q}`);
+        for (const e of j?.items ?? []) {
+          if (!isClosedDayEvent(e, keywords)) continue;
+          const iv = eventInterval(e, tz);
+          if (iv) out.push({ calendarId, summary: e.summary ?? "", date: tsToDate(iv.start, tz), interval: wholeDays(iv, tz) });
+        }
+        pageToken = j?.nextPageToken;
+      } while (pageToken && ++pages < 4);
+    }));
+    return out;
+  }
+
+  async closedDayIntervals(calendarIds: string[], range: Interval, tz: string, keywords: string[]): Promise<Interval[]> {
+    return (await this.findClosedDayEvents(calendarIds, range, tz, keywords)).map((x) => x.interval);
   }
 
   async busyFromFreeBusy(calendarIds: string[], range: Interval): Promise<Interval[]> {

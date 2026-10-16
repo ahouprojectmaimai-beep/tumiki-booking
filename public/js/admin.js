@@ -129,6 +129,13 @@ async function viewSettings(pane) {
     ? g.calendars.map((c) => { const v = c.primary ? "primary" : c.id; return h("option", { value: v, selected: v === s.targetCalendarId, text: c.summary + (c.primary ? "（メイン・初期設定）" : "") }); })
     : [h("option", { value: s.targetCalendarId, text: s.targetCalendarId })]);
   const busy = h("div", { class: "checks", id: "s-busy" }, g.calendars.map((c) => h("label", {}, h("input", { type: "checkbox", value: c.id, checked: s.busyCalendarIds.includes(c.id) }), (c.summary || c.id).trim() + (c.primary ? "（メイン）" : ""))));
+  const closedCals = h("div", { class: "checks", id: "s-closedCals" }, g.calendars.map((c) => h("label", {}, h("input", { type: "checkbox", value: c.id, checked: (s.closedDayCalendarIds || []).includes(c.id) }), (c.summary || c.id).trim() + (c.primary ? "（メイン）" : ""))));
+  const closedList = h("div", { class: "hint", id: "closed-list", text: "読み込み中…" });
+  api("/api/admin/closed-days").then((r) => {
+    clear(closedList).append(r.items.length
+      ? h("div", {}, r.items.map((x) => h("div", { text: `${x.date}　${x.summary}（${x.calendar}）${x.applied ? "" : "　※未反映：下で「読み取るカレンダー」にチェックしてください"}` })))
+      : h("div", { text: "今後の期間に、該当する予定は見つかりませんでした。" }));
+  }).catch(() => { closedList.textContent = "確認できませんでした。"; });
   const form = h("form", { onsubmit: async (e) => {
     e.preventDefault();
     const v = (k) => $(`#s-${k}`).value, n = (k) => Number(v(k)), c = (k) => $(`#s-${k}`).checked;
@@ -137,6 +144,7 @@ async function viewSettings(pane) {
       weekdays: [...document.querySelectorAll("#s-weekdays input:checked")].map((i) => Number(i.value)),
       dayStart: v("dayStart"), dayEnd: v("dayEnd"), horizonDays: n("horizonDays"), allowSameDay: c("allowSameDay"), cutoffMin: Math.round(n("cutoffHours") * 60),
       officeName: v("officeName"), officeAddress: v("officeAddress"), visitLocationBy: v("visitLocationBy"),
+      closedDayKeywords: v("closedDayKeywords").split(/[,、，\s]+/).filter(Boolean), closedDayCalendarIds: [...document.querySelectorAll("#s-closedCals input:checked")].map((i) => i.value),
       busyCalendarIds: [...document.querySelectorAll("#s-busy input:checked")].map((i) => i.value).filter((id) => id !== (v("targetCalendarId") === "primary" ? g.calendars.find((c) => c.primary)?.id : v("targetCalendarId"))), targetCalendarId: v("targetCalendarId"),
       googleInvite: c("googleInvite"), sendOwnMail: c("sendOwnMail"), adminNotifyEmail: v("adminNotifyEmail"), replyTo: v("replyTo"), privacyText: v("privacyText"),
     };
@@ -157,6 +165,11 @@ async function viewSettings(pane) {
       h("label", { class: "f" }, "予約の登録先カレンダー", target),
       h("div", { class: "f" }, "空き時間の判定に加えるカレンダー", h("p", { class: "hint", text: "登録先は常に判定されます。他のカレンダーの予定も避けたい場合に選びます。" }), busy),
       chk("googleInvite", "Googleカレンダーの招待通知をお客様に送る")),
+    h("section", { class: "card" }, h("h2", { text: "お休み日（休み・休業日）" }),
+      h("p", { class: "hint", text: "カレンダーの予定の件名に下のキーワードを含む日は、終日お休みとして予約を受け付けません（「予定なし」の終日予定も対象）。" }),
+      h("label", { class: "f" }, "キーワード（カンマ区切り）", h("input", { type: "text", id: "s-closedDayKeywords", value: (s.closedDayKeywords || []).join("、") })),
+      h("div", { class: "f" }, "お休みの予定を読み取るカレンダー", h("p", { class: "hint", text: "登録先・空き判定に加えるカレンダーに加えて、ここで選んだカレンダーも読み取ります（予定の内容は避けず、お休みの日だけ反映します）。" }), closedCals),
+      h("div", { class: "f" }, "現在検出されているお休み日", closedList)),
     h("section", { class: "card" }, h("h2", { text: "メール" }), chk("sendOwnMail", "TUMIKIの確認メール（変更・キャンセルのリンク付き）を送る"),
       txt("adminNotifyEmail", "予約が入った時に通知を受け取るメール", { hint: "空欄なら通知しません" }), txt("replyTo", "返信先メールアドレス"),
       txt("privacyText", "個人情報の利用目的（予約画面に表示）", { area: true })),
