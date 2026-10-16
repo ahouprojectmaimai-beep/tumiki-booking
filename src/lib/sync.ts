@@ -45,7 +45,7 @@ export async function syncCalendar(d: Deps, s: Settings): Promise<SyncResult> {
     const iv = eventInterval(ev, s.timezone);
     if (!iv || ev.start?.date) continue; // 終日予定に変えられた場合などは触らず、管理者の目視に任せる
     if (iv.start !== b.start_ts || iv.end !== b.end_ts) {
-      const blk = blockOf(s, iv);
+      const blk = blockOf(s, iv, b.mode);
       const r = await d.db
         .prepare("UPDATE bookings SET start_ts=?, end_ts=?, block_start_ts=?, block_end_ts=?, externally_changed=1, updated_at=? WHERE id=? AND status='confirmed' AND (start_ts != ? OR end_ts != ?)")
         .bind(iv.start, iv.end, blk.start, blk.end, now, b.id, iv.start, iv.end).run();

@@ -1,7 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 56" role="img" aria-label="TUMIKI">
-  <!-- 仮ロゴ: 公式ロゴ素材（透過PNG/SVG）が届いたら、このファイルと logo.png を差し替えてください -->
-  <rect x="2" y="26" width="24" height="24" rx="5" fill="#E8833A"/>
-  <rect x="28" y="26" width="24" height="24" rx="5" fill="#F4C24B"/>
-  <rect x="15" y="2" width="24" height="24" rx="5" fill="#5FB3A1"/>
-  <text x="66" y="42" font-family="Hiragino Sans, Noto Sans JP, sans-serif" font-size="34" font-weight="800" fill="#3B3228" letter-spacing="2">TUMIKI</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="250 200 750 840" role="img" aria-label="TUMIKI">
+  <path d="M625 215c14 0 26 6 38 18l210 210c12 12 17 22 17 33 0 14-11 24-27 24H387c-16 0-27-10-27-24 0-11 5-21 17-33l210-210c12-12 24-18 38-18z" fill="#FB403B"/>
+  <rect x="445" y="500" width="360" height="222" rx="40" fill="#FEC43E"/>
+  <rect x="268" y="740" width="344" height="285" rx="46" fill="#31AB62"/>
+  <rect x="636" y="740" width="349" height="285" rx="46" fill="#1090FD"/>
 </svg>

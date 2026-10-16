@@ -98,7 +98,7 @@ async function busyIn(d: Deps, s: Settings, range: Interval, excludeEventId?: st
 }
 
 /** 期間内の予約可能な日時（お客様には既存予定の内容を一切返さない） */
-export async function getAvailability(d: Deps, s: Settings, from: string, to: string, excludeBookingId = "") {
+export async function getAvailability(d: Deps, s: Settings, from: string, to: string, excludeBookingId = "", mode?: Mode) {
   const now = nowOf(d);
   if (!isDateStr(from) || !isDateStr(to) || to < from) throw new BookingError("invalid", "期間が正しくありません");
   if (to > addDays(from, 62)) to = addDays(from, 62);
@@ -106,14 +106,14 @@ export async function getAvailability(d: Deps, s: Settings, from: string, to: st
   let eventId: string | undefined;
   if (excludeBookingId) eventId = (await getBooking(d.db, excludeBookingId))?.event_id || undefined;
   const [busy, holds] = await Promise.all([busyIn(d, s, range, eventId), holdsIn(d.db, range, now, excludeBookingId)]);
-  return rangeSlots(s, from, to, busy, holds, now);
+  return rangeSlots(s, from, to, busy, holds, now, mode);
 }
 
-async function assertSlotFree(d: Deps, s: Settings, date: string, time: string, excludeBookingId = "", excludeEventId?: string) {
+async function assertSlotFree(d: Deps, s: Settings, date: string, time: string, excludeBookingId = "", excludeEventId?: string, mode?: Mode) {
   const now = nowOf(d);
   const range = dateRangeToTs(s, addDays(date, -1), addDays(date, 1));
   const [busy, holds] = await Promise.all([busyIn(d, s, range, excludeEventId), holdsIn(d.db, range, now, excludeBookingId)]);
-  if (!isSlotAvailable(s, date, time, busy, holds, now)) {
+  if (!isSlotAvailable(s, date, time, busy, holds, now, mode)) {
     throw new BookingError("unavailable", "申し訳ありません、この日時は埋まってしまいました。別の日時をお選びください。");
   }
 }
@@ -175,6 +175,7 @@ function eventBody(b: MailBooking, s: Settings, baseUrl: string, token: string |
     start: { dateTime: new Date(b.start_ts * 1000).toISOString(), timeZone: s.timezone },
     end: { dateTime: new Date(b.end_ts * 1000).toISOString(), timeZone: s.timezone },
     transparency: "opaque",
+    colorId: s.eventColorId, // 黒（お客様商談用）
     attendees: s.googleInvite ? [{ email: b.email, displayName: b.name }] : [],
     guestsCanModify: false,
     extendedProperties: { private: { tumikiBookingId: b.id } },
@@ -202,11 +203,11 @@ export async function createBooking(d: Deps, s: Settings, raw: unknown, ip = "un
   }
 
   // 1) 設定条件 + Google空き + 既存予約 を確認
-  await assertSlotFree(d, s, input.date, input.time);
+  await assertSlotFree(d, s, input.date, input.time, "", undefined, input.mode);
 
   // 2) DB側で原子的に仮押さえ（重なれば0件 → 失敗）
   const iv = slotInterval(s, input.date, input.time);
-  const block = blockOf(s, iv);
+  const block = blockOf(s, iv, input.mode);
   const id = newBookingId();
   const token = randomToken(32);
   const hash = await sha256Hex(token);
@@ -310,10 +311,10 @@ export async function rescheduleBooking(d: Deps, s: Settings, id: string, date: 
   if (by === "customer" && b.start_ts - nowOf(d) < s.cutoffMin * MIN) {
     throw new BookingError("forbidden", "開始時刻が近いため、オンラインでの変更はできません。お手数ですが直接ご連絡ください。");
   }
-  await assertSlotFree(d, s, date, time, id, b.event_id || undefined);
+  await assertSlotFree(d, s, date, time, id, b.event_id || undefined, b.mode);
 
   const iv = slotInterval(s, date, time);
-  const blk = blockOf(s, iv);
+  const blk = blockOf(s, iv, b.mode);
   const now = nowOf(d);
   const moved = await d.db
     .prepare(

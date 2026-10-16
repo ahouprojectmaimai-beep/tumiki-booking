@@ -12,7 +12,7 @@ async function boot() {
 function login() {
   const errs = { forbidden: "このGoogleアカウントは管理者として登録されていません。", denied: "Googleの認証がキャンセルされました。" };
   clear(app).append(h("div", { class: "wrap" },
-    h("header", { class: "brand" }, h("img", { src: "/brand/logo.svg", alt: "TUMIKI" })),
+    h("header", { class: "brand" }, h("img", { src: "/brand/logo.png", alt: "TUMIKI" })),
     h("h1", { text: "予約管理" }),
     q.get("error") ? h("p", { class: "alert", text: errs[q.get("error")] || "ログインできませんでした。" }) : null,
     h("a", { class: "btn", href: "/api/admin/login", text: "Googleでログイン" }),
@@ -23,7 +23,7 @@ function login() {
 function shell() {
   const tabs = [["bookings", "予約一覧"], ["settings", "予約設定"], ["google", "Google連携"], ["mail", "メール履歴"]];
   clear(app).append(
-    h("div", { class: "topbar" }, h("img", { src: "/brand/logo.svg", alt: "TUMIKI" }),
+    h("div", { class: "topbar" }, h("img", { src: "/brand/logo.png", alt: "TUMIKI" }),
       h("div", {}, h("a", { class: "btn small ghost", href: "/", target: "_blank", rel: "noopener", text: "予約画面" }), " ",
         h("button", { class: "btn small ghost", type: "button", text: "ログアウト", onclick: async () => { await api("/api/admin/logout", { method: "POST" }); location.href = "/admin"; } }))),
     h("div", { class: "tabs", role: "tablist" }, tabs.map(([k, l]) => h("button", { class: "tab", role: "tab", "aria-selected": String(k === tab), text: l, onclick: () => { tab = k; shell(); } }))),
@@ -91,7 +91,7 @@ async function rescheduleModal(b, done) {
   const err = h("div");
   const go = h("button", { class: "btn", type: "button", disabled: true, text: "この日時に変更（お客様に通知）" });
   const picker = createPicker({ firstDate: cfg.firstDate, lastDate: cfg.lastDate, today: cfg.today,
-    fetchDays: async (from, to) => (await api(`/api/admin/availability?from=${from}&to=${to}&exclude=${b.id}`)).days,
+    fetchDays: async (from, to) => (await api(`/api/admin/availability?from=${from}&to=${to}&exclude=${b.id}&mode=${b.mode || "online"}`)).days,
     onPick: (s) => { slot = s; go.disabled = !s; } });
   const m = modal("日時変更", h("p", { class: "hint", text: `現在：${fmtRange(b)}` }), picker.el, err, go,
     h("button", { class: "btn ghost", type: "button", text: "閉じる", onclick: () => m.remove() }));
@@ -128,16 +128,16 @@ async function viewSettings(pane) {
   const target = h("select", { id: "s-targetCalendarId" }, g.calendars.length
     ? g.calendars.map((c) => { const v = c.primary ? "primary" : c.id; return h("option", { value: v, selected: v === s.targetCalendarId, text: c.summary + (c.primary ? "（メイン・初期設定）" : "") }); })
     : [h("option", { value: s.targetCalendarId, text: s.targetCalendarId })]);
-  const busy = h("div", { class: "checks", id: "s-busy" }, g.calendars.filter((c) => !c.primary).map((c) => h("label", {}, h("input", { type: "checkbox", value: c.id, checked: s.busyCalendarIds.includes(c.id) }), c.summary)));
+  const busy = h("div", { class: "checks", id: "s-busy" }, g.calendars.map((c) => h("label", {}, h("input", { type: "checkbox", value: c.id, checked: s.busyCalendarIds.includes(c.id) }), (c.summary || c.id).trim() + (c.primary ? "（メイン）" : ""))));
   const form = h("form", { onsubmit: async (e) => {
     e.preventDefault();
     const v = (k) => $(`#s-${k}`).value, n = (k) => Number(v(k)), c = (k) => $(`#s-${k}`).checked;
     const body = {
-      durationMin: n("durationMin"), stepMin: n("stepMin"), bufferBeforeMin: n("bufferBeforeMin"), bufferAfterMin: n("bufferAfterMin"),
+      durationMin: n("durationMin"), stepMin: n("stepMin"), bufferBeforeMin: n("bufferBeforeMin"), bufferAfterMin: n("bufferAfterMin"), inPersonBufferMin: n("inPersonBufferMin"),
       weekdays: [...document.querySelectorAll("#s-weekdays input:checked")].map((i) => Number(i.value)),
       dayStart: v("dayStart"), dayEnd: v("dayEnd"), horizonDays: n("horizonDays"), allowSameDay: c("allowSameDay"), cutoffMin: Math.round(n("cutoffHours") * 60),
       officeName: v("officeName"), officeAddress: v("officeAddress"), visitLocationBy: v("visitLocationBy"),
-      busyCalendarIds: [...document.querySelectorAll("#s-busy input:checked")].map((i) => i.value), targetCalendarId: v("targetCalendarId"),
+      busyCalendarIds: [...document.querySelectorAll("#s-busy input:checked")].map((i) => i.value).filter((id) => id !== (v("targetCalendarId") === "primary" ? g.calendars.find((c) => c.primary)?.id : v("targetCalendarId"))), targetCalendarId: v("targetCalendarId"),
       googleInvite: c("googleInvite"), sendOwnMail: c("sendOwnMail"), adminNotifyEmail: v("adminNotifyEmail"), replyTo: v("replyTo"), privacyText: v("privacyText"),
     };
     try { await api("/api/admin/settings", { method: "PUT", body }); toast(pane, "保存しました"); } catch (x) { toast(pane, x.message, ""); }
@@ -147,6 +147,7 @@ async function viewSettings(pane) {
       h("div", { class: "grid2" }, h("label", { class: "f" }, "受付開始時刻", h("input", { type: "time", id: "s-dayStart", value: s.dayStart })), h("label", { class: "f" }, "受付終了時刻（この時刻までに終了）", h("input", { type: "time", id: "s-dayEnd", value: s.dayEnd }))),
       h("div", { class: "grid2" }, num("durationMin", "予約枠の長さ（分）", { min: 15, max: 480 }), h("label", { class: "f" }, "開始時刻の刻み幅", step)),
       h("div", { class: "grid2" }, num("bufferBeforeMin", "予約の前の余裕（分）"), num("bufferAfterMin", "予約の後の余裕（分）")),
+      h("div", { class: "grid2" }, num("inPersonBufferMin", "対面（事務所・訪問）の移動時間：前後に確保（分）")),
       h("div", { class: "grid2" }, num("horizonDays", "何日先まで予約可能", { min: 1, max: 90 }),
         h("label", { class: "f" }, "締切（開始の何時間前まで）", h("input", { type: "number", id: "s-cutoffHours", value: s.cutoffMin / 60, min: 0, step: "0.5" }))),
       chk("allowSameDay", "当日の予約を受け付ける")),

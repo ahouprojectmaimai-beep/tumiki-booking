@@ -25,7 +25,7 @@ function renderForm() {
 
   const picker = createPicker({
     firstDate: cfg.firstDate, lastDate: cfg.lastDate, today: cfg.today,
-    fetchDays: async (from, to) => (await api(`/api/public/availability?from=${from}&to=${to}`)).days,
+    fetchDays: async (from, to) => (await api(`/api/public/availability?from=${from}&to=${to}&mode=${state.mode || "online"}`)).days,
     onPick: (s) => { state.slot = s; unlock("s-info", !!s); updateSubmit(); },
   });
   state.picker = picker;
@@ -69,6 +69,7 @@ function checkEmail() {
 function unlock(id, on) { $(`#${id}`).classList.toggle("locked", !on); }
 
 function pickMode(m) {
+  const changed = state.mode !== m;
   state.mode = m;
   for (const b of document.querySelectorAll(".mode")) b.setAttribute("aria-pressed", String(b.dataset.mode === m));
   const extra = clear($("#mode-extra")), cfg = state.cfg;
@@ -84,6 +85,7 @@ function pickMode(m) {
     extra.append(h("div", { class: "addr", text: "訪問場所は、ご予約後に担当者から改めてご相談します。" }));
   }
   unlock("s-date", true);
+  if (changed) { state.slot = null; state.picker.refresh(); } // 対面は移動時間ぶん空きが変わるため取り直す
   updateSubmit();
 }
 

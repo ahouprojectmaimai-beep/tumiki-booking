@@ -80,5 +80,5 @@ export function createPicker({ firstDate, lastDate, today, fetchDays, onPick }) 
     ].filter(Boolean));
   }
   render();
-  return { el: root, refresh: () => { cache.clear(); return render(); }, get value() { return selDate && selTime ? { date: selDate, time: selTime } : null; } };
+  return { el: root, refresh: () => { cache.clear(); selDate = null; selTime = null; onPick(null); return render(); }, get value() { return selDate && selTime ? { date: selDate, time: selTime } : null; } };
 }

@@ -7,6 +7,8 @@ export type Settings = {
   stepMin: number;
   bufferBeforeMin: number;
   bufferAfterMin: number;
+  inPersonBufferMin: number; // 対面（事務所・訪問）の前後に確保する移動時間（分）
+  eventColorId: string; // Googleカレンダーの予定の色ID（"8"=グラファイト＝黒）
   weekdays: number[]; // 0=日..6=土
   dayStart: string; // 受付開始時刻（この時刻以降に開始）
   dayEnd: string; // 受付終了時刻（この時刻までに終了）
@@ -32,6 +34,8 @@ export const DEFAULT_SETTINGS: Settings = {
   stepMin: 15,
   bufferBeforeMin: 0,
   bufferAfterMin: 0,
+  inPersonBufferMin: 120,
+  eventColorId: "8",
   weekdays: [1, 2, 3, 4, 5],
   dayStart: "10:00",
   dayEnd: "18:00",
@@ -66,6 +70,8 @@ export function normalizeSettings(input: unknown, base: Settings = DEFAULT_SETTI
     stepMin: int(i.stepMin, 5, 120, base.stepMin),
     bufferBeforeMin: int(i.bufferBeforeMin, 0, 240, base.bufferBeforeMin),
     bufferAfterMin: int(i.bufferAfterMin, 0, 240, base.bufferAfterMin),
+    inPersonBufferMin: int(i.inPersonBufferMin, 0, 480, base.inPersonBufferMin),
+    eventColorId: typeof i.eventColorId === "string" && /^(?:[1-9]|1[01])$/.test(i.eventColorId) ? i.eventColorId : base.eventColorId,
     weekdays: Array.isArray(i.weekdays)
       ? [...new Set(i.weekdays.filter((n): n is number => Number.isInteger(n) && n >= 0 && n <= 6))].sort()
       : base.weekdays,

@@ -134,19 +134,19 @@ export function buildMail(
     ending, "", "TUMIKI",
   ].filter((x, i, a) => !(x === "" && a[i - 1] === "")).join("\n");
 
-  const html = `<!doctype html><html lang="ja"><body style="margin:0;background:#FBF7F0;font-family:-apple-system,'Hiragino Sans','Noto Sans JP',sans-serif;color:#3B3228">
+  const html = `<!doctype html><html lang="ja"><body style="margin:0;background:#F6F9FC;font-family:-apple-system,'Hiragino Sans','Noto Sans JP',sans-serif;color:#1B2839">
 <div style="max-width:560px;margin:0 auto;padding:24px 16px">
-<div style="text-align:center;padding:8px 0 20px"><img src="${opts.baseUrl}/brand/logo.png" alt="TUMIKI" height="40" style="height:40px" onerror="this.style.display='none'"></div>
-<div style="background:#fff;border-radius:16px;padding:28px 24px;border:1px solid #EFE6D8">
+<div style="text-align:center;padding:8px 0 20px"><img src="${opts.baseUrl}/brand/logo.png" alt="TUMIKI" height="52" style="height:52px" onerror="this.style.display='none'"></div>
+<div style="background:#fff;border-radius:16px;padding:28px 24px;border:1px solid #E1E7EF">
 <p style="margin:0 0 4px;font-weight:700;font-size:16px">${esc(greet)}</p>
 <p style="margin:12px 0 20px;line-height:1.8;font-size:14px">${esc(intro[kind]).replace(/\n/g, "<br>")}</p>
-${rows.map((r) => `<div style="margin:0 0 14px"><div style="font-size:12px;color:#8A7B68;margin-bottom:2px">${esc(r.label)}</div><div style="font-size:15px;font-weight:600;line-height:1.6">${
-    /^https?:\/\//.test(r.value) ? `<a href="${esc(r.value)}" style="color:#E8833A">${esc(r.value)}</a>` : esc(r.value).replace(/\n/g, "<br>")
+${rows.map((r) => `<div style="margin:0 0 14px"><div style="font-size:12px;color:#66707F;margin-bottom:2px">${esc(r.label)}</div><div style="font-size:15px;font-weight:600;line-height:1.6">${
+    /^https?:\/\//.test(r.value) ? `<a href="${esc(r.value)}" style="color:#0B78DD">${esc(r.value)}</a>` : esc(r.value).replace(/\n/g, "<br>")
   }</div></div>`).join("")}
-${footerLink ? `<div style="text-align:center;margin:26px 0 6px"><a href="${esc(opts.manageUrl!)}" style="display:inline-block;background:#E8833A;color:#fff;text-decoration:none;font-weight:700;padding:14px 26px;border-radius:999px;font-size:15px">予約の確認・変更・キャンセル</a></div>` : ""}
+${footerLink ? `<div style="text-align:center;margin:26px 0 6px"><a href="${esc(opts.manageUrl!)}" style="display:inline-block;background:#0B78DD;color:#fff;text-decoration:none;font-weight:700;padding:14px 26px;border-radius:999px;font-size:15px">予約の確認・変更・キャンセル</a></div>` : ""}
 ${ending ? `<p style="margin:20px 0 0;font-size:14px;line-height:1.8">${esc(ending)}</p>` : ""}
 </div>
-<p style="text-align:center;color:#8A7B68;font-size:12px;margin:18px 0 0">TUMIKI（${esc(longDate)} のご案内）</p>
+<p style="text-align:center;color:#66707F;font-size:12px;margin:18px 0 0">TUMIKI（${esc(longDate)} のご案内）</p>
 </div></body></html>`;
 
   return { to: opts.to ?? b.email, subject: SUBJECT[kind], text, html, replyTo: s.replyTo || undefined };

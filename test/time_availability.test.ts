@@ -61,6 +61,28 @@ describe("daySlots", () => {
     expect(slots).not.toContain("13:15"); // 13:00 + 余裕30分 = 13:30 から
     expect(slots).toContain("13:30");
   });
+  it("対面は前後2時間を確保し、オンラインは確保しない", () => {
+    const busy = [iv("2026-10-21", "13:00", "14:00")];
+    const online = daySlots(s, "2026-10-21", busy, [], NOW, "online");
+    expect(online).toContain("12:00"); // 12:00-13:00 は予定に接していてもOK
+    expect(online).toContain("14:00");
+    for (const mode of ["office", "visit"] as const) {
+      const slots = daySlots(s, "2026-10-21", busy, [], NOW, mode);
+      expect(slots).toContain("10:00"); // 10:00-11:00 + 後2時間 = 13:00 ちょうどまで
+      expect(slots).not.toContain("10:15");
+      expect(slots).not.toContain("12:00");
+      expect(slots).not.toContain("14:00"); // 予定終了14:00 + 前2時間 = 16:00 から
+      expect(slots).not.toContain("15:45");
+      expect(slots).toContain("16:00");
+    }
+  });
+  it("対面の移動時間は設定で変えられる/既存の余裕が長ければそちらを使う", () => {
+    const busy = [iv("2026-10-21", "13:00", "14:00")];
+    const s60 = normalizeSettings({ inPersonBufferMin: 60 });
+    expect(daySlots(s60, "2026-10-21", busy, [], NOW, "visit")).toContain("11:00");
+    const big = normalizeSettings({ inPersonBufferMin: 30, bufferBeforeMin: 90, bufferAfterMin: 90 });
+    expect(daySlots(big, "2026-10-21", busy, [], NOW, "visit")).not.toContain("11:15");
+  });
   it("曜日・過去・期間外・当日・締切", () => {
     expect(daySlots(s, "2026-10-24", [], [], NOW)).toEqual([]); // 土曜
     expect(daySlots(s, "2026-10-19", [], [], NOW)).toEqual([]); // 過去

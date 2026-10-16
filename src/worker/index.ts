@@ -72,7 +72,9 @@ app.get("/api/public/availability", async (c) => {
   const r = bookableRange(s, nowSec());
   const from = c.req.query("from") ?? r.first;
   const to = c.req.query("to") ?? addDays(from, 31);
-  return c.json({ days: await getAvailability(depsOf(c.env), s, from < r.first ? r.first : from, to > r.last ? r.last : to) });
+  const m = c.req.query("mode");
+  const mode = m === "office" || m === "visit" || m === "online" ? m : undefined; // 対面は前後に移動時間を確保
+  return c.json({ days: await getAvailability(depsOf(c.env), s, from < r.first ? r.first : from, to > r.last ? r.last : to, "", mode) });
 });
 
 app.post("/api/public/bookings", async (c) => {
@@ -104,7 +106,7 @@ app.get("/api/public/bookings/:id/availability", async (c) => {
   const r = bookableRange(s, nowSec());
   const from = c.req.query("from") ?? r.first;
   const to = c.req.query("to") ?? addDays(from, 31);
-  return c.json({ days: await getAvailability(depsOf(c.env), s, from < r.first ? r.first : from, to > r.last ? r.last : to, b.id) });
+  return c.json({ days: await getAvailability(depsOf(c.env), s, from < r.first ? r.first : from, to > r.last ? r.last : to, b.id, b.mode) });
 });
 
 app.post("/api/public/bookings/:id/reschedule", async (c) => {
@@ -250,7 +252,9 @@ app.get("/api/admin/availability", async (c) => {
   const s = await loadSettings(dbOf(c.env));
   const r = bookableRange(s, nowSec());
   const from = c.req.query("from") ?? r.first;
-  return c.json({ days: await getAvailability(depsOf(c.env), s, from < r.first ? r.first : from, c.req.query("to") ?? addDays(from, 31), c.req.query("exclude") ?? "") });
+  const m = c.req.query("mode");
+  const mode = m === "office" || m === "visit" || m === "online" ? m : undefined;
+  return c.json({ days: await getAvailability(depsOf(c.env), s, from < r.first ? r.first : from, c.req.query("to") ?? addDays(from, 31), c.req.query("exclude") ?? "", mode) });
 });
 
 app.get("/api/admin/mail-log", async (c) => {
